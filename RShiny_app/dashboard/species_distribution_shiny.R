@@ -8,36 +8,43 @@
 #
 
 library(shiny)
+library(ggplot2)
 
 # Define server logic required to draw a histogram
 server_1 <- function(input, output, session) {
-    ebd_filtered <- read.csv('data/preprocessed_1.csv')
-    output$distPlot <- renderPlot({
+  
+    # ebd_filtered$observation_count <- as.numeric(ebd_filtered$observation_count, na.rm = TRUE) %>% replace_na(1)
 
-        # generate bins based on input$bins from ui.R
-        x    <- faithful[, 2]
-        bins <- seq(min(x), max(x), length.out = input$bins + 1)
+    output$plot1 <- renderPlot({
+        ebd_filtered <- read.csv('data/preprocessed_1.csv')
+        if (input$state != "All States"){
+          ebd_filtered <- ebd_filtered %>% subset(state==input$state)
+        }
+        # get number of species per year 
+        x    <- ebd_filtered  %>% count(year, common_name) %>% count(year)
 
-        # draw the histogram with the specified number of bins
-        hist(x, breaks = bins, col = 'darkgray', border = 'white',
-             xlab = 'Waiting time to next eruption (in mins)',
-             main = 'Histogram of waiting times')
+        ggplot(x, aes(x=year, y=n)) + 
+          geom_line() + geom_title('Species number evolution across years')
 
     })
 
+    output$plot2 <- renderPlot({
+      x    <- ebd_filtered  %>% group_by(year, common_name) %>% summarise(counts = sum(observation_count))
+
+    })
 }
 
 
 server_2 <- function(input, output) {
   output$map <- renderLeaflet({
-    if (input$year != "All Years") {
+    if (input$year != "Choose year...") {
       df <- subset(ebd_filtered, year == input$year)
-    }
-    if (input$state != "All States") {
-      df <- subset(df, state == input$state)
+    } 
+    if (input$state == "All States"){
+      df <- ebd_filtered %>% group_by(common_name, state) %>% summarize(species_observed = mean(as.numeric(species_observed)), observation_count = mean(as.numeric(observation_count)), latitude = mean(latitude), longitude = mean(longitude))
     }
     
-    if(input$display == "All species") {
+    if (input$display == "All species") {
       tmp <- df %>% group_by(common_name) %>% summarize(detection = mean(as.numeric(species_observed)), lng = median(longitude), lat = median(latitude))
       m <- leaflet(data = df) %>%
       addTiles() %>% 

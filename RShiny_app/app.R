@@ -39,9 +39,9 @@ ui <- dashboardPage(
   ## Sidebar content
   dashboardSidebar(
     sidebarMenu(
-      menuItem("Species distributions", tabName = "sd", icon = icon('dashboard')),
-      menuItem("Species distributions (2)", tabName = "sd2", icon = icon("th")),
-      menuItem("Trends and predictions", tabName = "to", icon = icon("th"))
+      menuItem("Species distributions", tabName = "sd", icon = icon('dashboard',verify_fa = FALSE)),
+      menuItem("Species distributions (2)", tabName = "sd2", icon = icon("dashboard",verify_fa = FALSE)),
+      menuItem("Trends and predictions", tabName = "to", icon = icon("th",verify_fa = FALSE))
     #  menuItem("Data heterogeneity", tabName = "dh", icon = icon("dashboard")),
     #  menuItem("References and sources", tabName = "rs", icon = icon("th"))
       )
@@ -56,7 +56,9 @@ ui <- dashboardPage(
 
                 box(
                   title = "Controls",
-                  sliderInput("slider", "Number of observations:", 1, 100, 50)
+                  selectInput("state", "Select State:",
+                              choices = c("All States", unique(ebd_filtered$state)), 
+                              selected = "All States")
                 )
               )
       ),
@@ -68,12 +70,12 @@ ui <- dashboardPage(
                 sidebarLayout(
                   sidebarPanel(
                     selectInput("display", "Choose species:",
-                                choices = c("All species", unique(ebd_filtered$common_name))),
+                                choices = c("All species", sort(unique(ebd_filtered$common_name))), selected = "Eurasian Kestrel"),
                     selectInput("year", "Select Year of observation:",
-                                choices = c("All Years", sort(unique(ebd_filtered$year))), 
+                                choices = c("Choose year...", sort(unique(ebd_filtered$year))), 
                                 selected = "All Years"),
                     selectInput("state", "Select State:",
-                                choices = c("All States", sort(unique(ebd_filtered$year))), 
+                                choices = c("All States", unique(ebd_filtered$state)), 
                                 selected = "All States")  
                   ),
                   
@@ -85,7 +87,15 @@ ui <- dashboardPage(
             ),
 
       tabItem(tabName = "to",
-              h2("Trends and predictions")
+              h2("Trends and predictions"),
+              fluidRow(
+                box(plotOutput("plotx", height = 250)),
+                
+                box(
+                  title = "Controls",
+                  sliderInput("slider", "Years", min(ebd_filtered$year), max(ebd_filtered$year), median(ebd_filtered$year))
+                )
+              )
       # ),
       # 
       # tabItem(tabName = "dh",

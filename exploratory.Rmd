@@ -48,11 +48,12 @@ library(sf)
 library(gridExtra)
 library(tidyverse)
 library(dplyr)
+library(leaflet)
 # resolve namespace conflicts
 select <- dplyr::select
 
-ebd <- read_ebd(file) 
-glimpse(ebd)
+#ebd <- read_ebd(file) 
+#glimpse(ebd)
 ``` 
 
 ```{r select}
@@ -81,8 +82,8 @@ library(dplyr)
 # resolve namespace conflicts
 select <- dplyr::select
 
-ebd_fr <- read_ebd(file) 
-glimpse(ebd_fr)
+#ebd_fr <- read_ebd(file) 
+#glimpse(ebd_fr)
 ``` 
 
 ```{r select2}
@@ -164,6 +165,14 @@ write_csv(ebd_filtered, "data/preprocessed_1.csv", na = "")
 ebd_filtered <- read.csv('data/preprocessed_1.csv')
 ```
 
+```{r}
+ebd_small <- ebd_filtered[,c('common_name','observation_count','state','latitude','longitude','observation_date','year','species_observed')]
+write_csv(ebd_small, "data/preprocessed_2.csv", na = "")
+```
+
+```{r}
+summary(ebd_filtered)
+```
 
 
 ```{r}
@@ -248,4 +257,72 @@ if(input$display == "All species") {
 ```
 
 
+```{r}
+ebd_filtered <- read.csv('/Users/clairehe/Documents/GitHub/auk/RShiny_app/data/preprocessed_2.csv')
+
+```
+
+
+```{r}
+length(unique(ebd_s$state))
+
+```
+```{r}
+input <- {}
+input$year <- 'All Years'
+input$state <- 'All States'
+input$display <- 'Eurasian Kestrel'
+```
+
+```{r}
+if (input$year != "All Years") {
+  df <- subset(df, year == input$year)
+} 
+
+if (input$state != "All States") {
+  df <- subset(df, state == input$state)
+} 
+
+if(input$year == "All Years"){
+  df <- df %>% group_by(common_name, latitude, longitude) %>% summarize(species_observed = mean(as.numeric(species_observed)), observation_count = mean(as.numeric(observation_count)))
+}
+
+if (input$display == "All species") {
+  tmp <- df %>% group_by(common_name) %>% summarize(detection = mean(as.numeric(species_observed)), lng = median(longitude), lat = median(latitude))
+  m <- leaflet(data = df) %>%
+  addTiles() %>% 
+  setView(lng = mean(tmp$lng), lat = mean(tmp$lat), zoom = 8)
+  pal <- colorQuantile("YlOrRd", tmp$detection, n = 4)
+  m <- addCircleMarkers(m, ~longitude, ~latitude, 
+                        color = ~pal(tmp$detection),
+                        radius = 5, 
+                        fillOpacity = 0.5,
+                        popup =  ~paste(paste(paste("Observation counts", round(tmp$detection, 2)), 'Species'), tmp$common_name))
+  m %>% addLegend(data = tmp,
+    pal = pal,
+    values = ~detection,
+    position = "bottomleft",
+    title = "Detection counts:",
+    opacity = 0.9
+  ) 
+  
+} else {
+  # data 
+  tmp <- df %>% subset(common_name == input$display)  # %>% group_by(latitude, longitude) %>% summarize(observation_count = sum(as.numeric(observation_count), na.rm = TRUE))
+  tmp$observation_count[tmp$observation_count == 'X'] <- mean(tmp$observation_count, na.rm = TRUE)
+  tmp$observation_count <- as.numeric(tmp$observation_count)
+  tmp$observation_count[is.na(tmp$observation_count)] <- mean(tmp$observation_count, na.rm = TRUE)
+  # map 
+  m <- leaflet(data = tmp) %>%
+  addTiles() %>%
+  setView(lng = mean(tmp$longitude), lat = mean(tmp$latitude), zoom = 5)
+  pal <- colorBin("YlOrRd", tmp$observation_count, 3)
+  m <- addCircleMarkers(m, ~tmp$longitude, ~tmp$latitude, 
+                        color = ~pal(tmp$observation_count),
+                        radius = 3, 
+                        fillOpacity = 0.5,
+                        popup = ~paste("Observation counts", round(as.numeric(tmp$observation_count, na.rm = TRUE), 2))
+  )
+}
+```
 
